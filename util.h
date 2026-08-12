@@ -26,16 +26,11 @@ uint16_t set_bit(uint16_t i, uint16_t nbit) {
 
 uint16_t sign_extend(uint16_t n, uint16_t sign_bit) {
     if (((n >> sign_bit) & 1) == 1) {
-        uint16_t extended = 0xffff;
-        for (int i = 16; i > sign_bit; i--) {
-            if (check_bit(n, i) == 0) {
-                reset_bit(extended, i);
-            }
-        }
+        uint16_t extended = 0xffff << (sign_bit + 1);
+        extended |= n;
         return extended;
     }
     return n;
 }
-
 
 #endif // UTIL_H
