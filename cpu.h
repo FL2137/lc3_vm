@@ -7,9 +7,12 @@
 
 #define MEMORY_SIZE 65536
 #define REGISTER_COUNT 8
+#define KEYBOARD_STATUS 0xFE00
+#define KEYBOARD_DATA 0xFE02
 
 uint16_t memory[MEMORY_SIZE];
 uint16_t R[REGISTER_COUNT];
+uint16_t flags;
 uint16_t pc;
 
 typedef enum {
@@ -30,6 +33,12 @@ typedef enum {
     TRAP = 0b1111,
     RESERVED = 0b1101
 } OPCODE;
+
+enum Flag {
+    FL_P = 1,
+    FL_Z = 1 << 1,
+    FL_N = 1 << 2
+};
 
 static void decode(uint16_t instruction);
 

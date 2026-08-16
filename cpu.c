@@ -1,4 +1,40 @@
 #include "cpu.h"
+#include "util.h"
+
+static uint16_t memory_read(uint16_t addr) {
+    if (addr == KEYBOARD_STATUS) {
+
+    }
+    
+    return memory[addr];
+}
+
+static uint16_t memory_write(uint16_t addr, uint16_t data) {
+
+    memory[addr] = data;
+}
+
+static void update_flags(uint16_t R) {
+    if (R == 0) {
+        flags = FL_Z;
+    }
+    else if ((R >> 15) == 1) {
+        flags = FL_N;
+    }
+    else {
+        flags = FL_P;
+    }
+}
+
+static void br(uint16_t instruction) {
+    uint16_t pc_offset = sign_extend(instruction & 0x1ff, 9);
+
+    uint16_t condition = (instruction >> 9) & 0b111;
+
+    if (condition & flags) {
+        pc += pc_offset;
+    }
+}
 
 static void add(uint16_t instruction) {
     
@@ -9,15 +45,17 @@ static void add(uint16_t instruction) {
     uint8_t is_immediate = (instruction >> 4) & 1;
     if (is_immediate == 1) { // this doesn't work as of now cuz twos complement is dumb
         if (((instruction >> 4) & 1) == 1) {
-            int x = 0b11110;
-            x--;
-            x = ~x;
+            uint16_t imm5 = instruction & 0b11111;
+            imm5 = sign_extend(imm5, 5);
+            R[dst] = R[src1] + imm5;
         }
     }
     else {
         src2 = instruction & 0b111;
         R[dst] = R[src1] + R[src2];
     }
+
+    update_flags(R[dst]);
 }
 
 static void not(uint16_t instruction) {
@@ -25,6 +63,7 @@ static void not(uint16_t instruction) {
     uint16_t src1 = (instruction >> 6) & 0b111;
 
     R[dst] = ~R[src1];
+    update_flags(R[dst]);
 }
 
 static void and(uint16_t instruction) {
@@ -33,17 +72,19 @@ static void and(uint16_t instruction) {
     uint16_t src2;
 
     uint8_t is_immediate = (instruction >> 4) & 1;
-    if (is_immediate == 1) { // this doesn't work as of now cuz twos complement is dumb
+    if (is_immediate == 1) { 
         if (((instruction >> 4) & 1) == 1) {
-            int x = 0b11110;
-            x--;
-            x = ~x;
+            uint16_t imm5 = instruction & 0b11111;
+            imm5 = sign_extend(imm5, 5);
+            R[dst] = R[src1] & imm5;
         }
     }
     else {
         src2 = instruction & 0b111;
         R[dst] = R[src1] & R[src2];
     }
+
+    update_flags(R[dst]);
 }
 
 static void jmp(uint16_t instruction) {
@@ -52,25 +93,54 @@ static void jmp(uint16_t instruction) {
 }
 
 static void jsr(uint16_t instruction) {
-    uint8_t is_reg_the_base = (instruction >> 11) & 1;
-    if (is_reg_the_base == 1) {
-        R[7] = pc + 1;
+    uint8_t is_jsrr = (instruction >> 11) & 1;
+    if (is_jsrr == 1) {
+        uint16_t pc_offset = sign_extend(instruction & 0x7ff, 11);
+        pc += pc_offset;
+    }
+    else {
+        R[7] = pc;
         uint16_t base_reg = (instruction >> 6) & 0b111;
         pc = R[base_reg];
     }
-    else {
-        int x = 0b10000000100;
-        int x2 = 0xFC04;
-    }
+}
+
+static void ld(uint16_t instruction) {
+    uint16_t pc_offset = sign_extend(instruction & 0x1ff, 9);
+    uint16_t reg = (instruction >> 9) & 0b111;
+    R[reg] = memory_read(pc + pc_offset);
+    update_flags(R[reg]);
+}
+
+static void ldi(uint16_t instruction) {
+    uint16_t reg = (instruction >> 9) & 0b111;
+    uint16_t pc_offset = sign_extend(instruction & 0x1ff, 9);
+    R[reg] = pc + pc_offset;
+    update_flags(R[reg]);
+}
+
+static void ldr(uint16_t instruction) {
+    uint16_t reg1 = (instruction >> 9) & 0b111;
+    uint16_t reg2 = (instruction >> 6) & 0b111;
+    uint16_t offset = sign_extend(instruction & 0b111111, 6);
+    R[reg1] = memory_read(R[reg2] + offset);
+    update_flags(R[reg1]);
+}
+
+static void st(uint16_t instruction) {
+    uint16_t pc_offset = sign_extend(instruction & 0x1ff, 9);
+    uint16_t reg = (instruction >> 9) & 0b111;
+    memory_write(pc + pc_offset, R[reg]);
+    update_flags()
 
 }
- 
+
 void execute(uint16_t instruction) {
     uint8_t op = instruction >> 12;
 
     switch (op) {
         case BR: {
-
+            br(instruction);
         } break;
         case ADD: {
             add(instruction);
@@ -87,6 +157,18 @@ void execute(uint16_t instruction) {
         case JSR: {
             jsr(instruction);
             break;
-        } 
+        }
+        case LD: {
+            ld(instruction);
+            break;
+        }
+        case LDI: {
+            ldi(instruction);
+            break;
+        }
+        case LDR: {
+            ldr(instruction);
+            break;
+        }
     }
 }
