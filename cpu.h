@@ -22,7 +22,7 @@ typedef enum {
     AND = 0b0101,
     JMP = 0b1100,
     JSR = 0b0100,
-    LD = 0b0010,
+    LD = 0 b0010,
     LDI = 0b1010,
     LDR = 0b0110,
     LEA = 0b1110,
@@ -35,12 +35,22 @@ typedef enum {
     RESERVED = 0b1101
 } OPCODE;
 
+enum {
+    TRAP_GETC = 0x20,
+    TRAP_OUT = 0x21,
+    TRAP_PUTS = 0x22,
+    TRAP_INT = 0x23,
+    TRAP_PUTB = 0x24,
+    TRAP_HALT = 0x25
+};
+
 enum Flag {
     FL_P = 1,
     FL_Z = 1 << 1,
     FL_N = 1 << 2
 };
 
+bool running;
 void run();
 
 #endif // CPU_H

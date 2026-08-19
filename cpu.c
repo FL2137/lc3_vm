@@ -1,16 +1,28 @@
 #include "cpu.h"
 #include "util.h"
 
+#include <errno.h>
+
 static void init() {
     flags = FL_Z;
     pc = 0x3000;
+    running = true;
+}
 
+static void load_program(char* path) {
+    FILE* file = fopen(path, "rb");
+    if (file == NULL) {
+        printf("fopen() failure: %d\n", errno);
+        exit(EXIT_FAILURE);
+    }
+
+
+    fclose(file);
 }
 
 void run() {
     init();
 
-    bool running = true;
     while (running) {
         // fetch
         uint16_t instruction = memory_read(pc);
@@ -164,7 +176,60 @@ static void str(uint16_t instruction) {
     uint16_t reg2 = (instruction >> 6) & 0b111;
     uint16_t offset = sign_extend(instruction & 0x3f, 6);
     memory_write(R[reg2] + offset, R[reg1]);
-    
+
+}
+
+static void trap(uint16_t code) {
+    switch (code) {
+        case TRAP_GETC: {
+            R[0] = (uint16_t)getchar();
+            update_flags(R[0]);
+            break;
+        }
+        case TRAP_OUT: {
+            putc((char)R[0], stdout);
+            fflush(stdout);
+            break;
+        }
+        case TRAP_PUTS: {
+            uint16_t* c = memory + R[0];
+            while (*c) {
+                putc((char)*c, stdout);
+                ++c;
+            }
+            fflush(stdout);
+            break;
+        }
+        case TRAP_INT: {
+            printf("Input a char: ");
+            char c = getchar();
+            putc(c, stdout);
+            fflush(stdout);
+            R[0] = (uint16_t)c;
+            update_flags(R[0]);
+            break;
+        }
+        case TRAP_PUTB: {
+            uint16_t* c = memory + R[0];
+            while (*c) {
+                char c1 = (*c) & 0xFF;
+                putc(c, stdout);
+                char c2 = (*c) >> 8;
+                if (c2) {
+                    putc(c2, stdout);
+                }
+                ++c;
+            }
+            fflush(stdout);
+            break;
+        }
+        case TRAP_HALT: {
+            printf("HALT\n");
+            fflush(stdout);
+            running = false;
+            break;
+        }
+    }
 }
 
 void execute(uint16_t instruction) {
@@ -200,6 +265,11 @@ void execute(uint16_t instruction) {
         }
         case LDR: {
             ldr(instruction);
+            break;
+        }
+        case TRAP: {
+            R[7] = pc;
+            trap(instruction & 0xff);
             break;
         }
     }
