@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 #define MEMORY_SIZE 65536
 #define REGISTER_COUNT 8
@@ -40,6 +41,6 @@ enum Flag {
     FL_N = 1 << 2
 };
 
-static void decode(uint16_t instruction);
+void run();
 
 #endif // CPU_H

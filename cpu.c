@@ -1,6 +1,26 @@
 #include "cpu.h"
 #include "util.h"
 
+static void init() {
+    flags = FL_Z;
+    pc = 0x3000;
+
+}
+
+void run() {
+    init();
+
+    bool running = true;
+    while (running) {
+        // fetch
+        uint16_t instruction = memory_read(pc);
+        pc++;
+    
+        execute(instruction);
+    }
+
+}
+
 static uint16_t memory_read(uint16_t addr) {
     if (addr == KEYBOARD_STATUS) {
 
@@ -131,8 +151,20 @@ static void st(uint16_t instruction) {
     uint16_t pc_offset = sign_extend(instruction & 0x1ff, 9);
     uint16_t reg = (instruction >> 9) & 0b111;
     memory_write(pc + pc_offset, R[reg]);
-    update_flags()
+}
 
+static void sti(uint16_t instruction) {
+    uint16_t pc_offset = sign_extend(instruction & 0x1ff, 9);
+    uint16_t reg = (instruction >> 9) & 0b111;
+    memory_write(memory_read(pc + pc_offset), R[reg]);
+}
+
+static void str(uint16_t instruction) {
+    uint16_t reg1 = (instruction >> 9) & 0b111;
+    uint16_t reg2 = (instruction >> 6) & 0b111;
+    uint16_t offset = sign_extend(instruction & 0x3f, 6);
+    memory_write(R[reg2] + offset, R[reg1]);
+    
 }
 
 void execute(uint16_t instruction) {
